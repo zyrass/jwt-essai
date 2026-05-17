@@ -54,40 +54,47 @@ const getSignUp = (req, res) => {
  * 5. Enregistre le nouvel utilisateur en base de données et le redirige vers la connexion.
  */
 const postSignUp = async (req, res) => {
-    const { email, password } = req.body
+    try {
+        const { email, password } = req.body
 
-    // Rechercher un utilisateur existant avec cet email exact
-    // Note : findOne() renvoie un objet unique (ou null), contrairement à find() qui renvoie un tableau
-    const checkUser = await UserModel.findOne({ email })
+        // Rechercher un utilisateur existant avec cet email exact
+        // Note : findOne() renvoie un objet unique (ou null), contrairement à find() qui renvoie un tableau
+        const checkUser = await UserModel.findOne({ email })
 
-    console.log('Vérification inscription :', {
-        email,
-        existeDeja: !!checkUser,
-    })
-
-    // Si l'utilisateur existe déjà
-    if (checkUser) {
-        res.render('signup', {
-            response: 'Cet email existe déjà',
-        })
-    } else {
-        // Initialiser une nouvelle instance utilisateur (email nettoyé automatiquement par le schéma)
-        const newUser = new UserModel({
+        console.log('Vérification inscription :', {
             email,
+            existeDeja: !!checkUser,
         })
-        
-        // Hacher le mot de passe de manière asynchrone avec bcrypt
-        // Le paramètre de "salt rounds" est fixé à 10 par défaut pour assurer un bon ratio vitesse/sécurité
-        const hash = await bcrypt.hash(password, 10)
-        
-        // Assigner le mot de passe haché de manière sécurisée
-        newUser.password = hash
-        
-        // Sauvegarder dans MongoDB (opération asynchrone)
-        await newUser.save()
-        
-        // Rediriger vers la page de connexion
-        res.redirect('/api/v1/signin')
+
+        // Si l'utilisateur existe déjà
+        if (checkUser) {
+            res.render('signup', {
+                response: 'Cet email existe déjà',
+            })
+        } else {
+            // Initialiser une nouvelle instance utilisateur (email nettoyé automatiquement par le schéma)
+            const newUser = new UserModel({
+                email,
+            })
+            
+            // Hacher le mot de passe de manière asynchrone avec bcrypt
+            // Le paramètre de "salt rounds" est fixé à 10 par défaut pour assurer un bon ratio vitesse/sécurité
+            const hash = await bcrypt.hash(password, 10)
+            
+            // Assigner le mot de passe haché de manière sécurisée
+            newUser.password = hash
+            
+            // Sauvegarder dans MongoDB (opération asynchrone)
+            await newUser.save()
+            
+            // Rediriger vers la page de connexion
+            res.redirect('/api/v1/signin')
+        }
+    } catch (error) {
+        console.error("Erreur lors de l'inscription :", error)
+        res.status(500).render('signup', {
+            response: "Une erreur interne s'est produite lors de l'inscription.",
+        })
     }
 }
 
@@ -96,47 +103,81 @@ const postSignUp = async (req, res) => {
  * 1. Recherche l'utilisateur dans MongoDB par son email.
  * 2. Si trouvé, compare le mot de passe en clair soumis avec le hash stocké en BDD (bcrypt.compare).
  * 3. Si correspondance, génère un token JWT signé avec la clé privée (JWT_SECRET) et une durée de vie d'1 heure.
- * 4. Stocke ce JWT dans un cookie nommé "access_token" sur le navigateur du client.
+ * 4. Stocke ce JWT dans un cookie nommé "access_token" sur le navigateur du client avec les paramètres de sécurité optimaux.
  * 5. Redirige vers la page de profil privée.
  */
 const postSignIn = async (req, res) => {
-    const { email, password } = req.body
-    
-    // Rechercher l'utilisateur par email
-    const checkUser = await UserModel.findOne({ email })
+    try {
+        const { email, password } = req.body
+        
+        // Rechercher l'utilisateur par email
+        const checkUser = await UserModel.findOne({ email })
 
-    if (checkUser !== null) {
-        // Comparer de manière sécurisée les hashs de mot de passe (évite les attaques temporelles)
-        const matchPassword = await bcrypt.compare(password, checkUser.password)
+        if (checkUser !== null) {
+            // 1. Protection Brute-Force : Vérifier si le compte est actuellement verrouillé
+            if (checkUser.lockUntil && checkUser.lockUntil > Date.now()) {
+                const minutesRemaining = Math.ceil((checkUser.lockUntil - Date.now()) / (60 * 1000))
+                return res.status(403).render('signin', {
+                    response: `Compte temporairement verrouillé. Réessayez dans ${minutesRemaining} minute(s).`,
+                })
+            }
 
-        if (matchPassword) {
-            // Générer le jeton JWT contenant l'ID et l'email comme "Payload" de confiance
-            const tokenJWT = jwt.sign(
-                {
-                    _id: checkUser._id,
-                    email: checkUser.email,
-                },
-                process.env.JWT_SECRET, // Clé privée d'authentification
-                {
-                    expiresIn: '1h', // Validité du token fixée à 1 heure
-                },
-            )
-            
-            // Envoyer le token sous forme de cookie au client
-            res.cookie('access_token', tokenJWT)
-            
-            // Rediriger l'utilisateur connecté vers sa page de profil sécurisée
-            res.redirect(`/api/v1/profile/${checkUser._id}`)
+            // 2. Comparer de manière sécurisée les hashs de mot de passe (évite les attaques temporelles)
+            const matchPassword = await bcrypt.compare(password, checkUser.password)
+
+            if (matchPassword) {
+                // Si la connexion réussit, réinitialiser le compteur de tentatives infructueuses si nécessaire
+                if (checkUser.loginAttempts > 0 || checkUser.lockUntil) {
+                    await checkUser.resetAttempts()
+                }
+
+                // Générer le jeton JWT contenant l'ID et l'email comme "Payload" de confiance
+                const tokenJWT = jwt.sign(
+                    {
+                        _id: checkUser._id,
+                        email: checkUser.email,
+                    },
+                    process.env.JWT_SECRET, // Clé privée d'authentification
+                    {
+                        expiresIn: '1h', // Validité du token fixée à 1 heure
+                    },
+                )
+                
+                // Envoyer le token sous forme de cookie ultra-sécurisé (HTTP-Only, HTTPS en production, SameSite strict)
+                const cookieOptions = {
+                    httpOnly: true,                          // Neutralise les attaques XSS (JavaScript ne peut pas lire le cookie)
+                    secure: process.env.NODE_ENV === 'production', // Cookie envoyé uniquement via HTTPS chiffré en production
+                    sameSite: 'strict',                      // Immunise contre le vol CSRF (pas d'envoi lors de requêtes de sites tiers)
+                    maxAge: 3600000                          // Expire après 1 heure (en millisecondes)
+                }
+                res.cookie('access_token', tokenJWT, cookieOptions)
+                
+                // Rediriger l'utilisateur connecté vers sa page de profil sécurisée
+                res.redirect(`/api/v1/profile/${checkUser._id}`)
+            } else {
+                // Mauvais mot de passe : incrémenter le compteur de tentatives infructueuses
+                await checkUser.incLoginAttempts()
+                
+                if (checkUser.loginAttempts >= 5) {
+                    res.status(401).render('signin', {
+                        response: 'Compte verrouillé pour 15 minutes suite à 5 échecs consécutifs.',
+                    })
+                } else {
+                    res.status(401).render('signin', {
+                        response: `Mot de passe incorrect. Tentatives restantes : ${5 - checkUser.loginAttempts}/5.`,
+                    })
+                }
+            }
         } else {
-            // Mauvais mot de passe : renvoyer le code HTTP 401 (Non autorisé)
+            // Utilisateur inexistant dans la base de données
             res.status(401).render('signin', {
-                response: 'Mot de passe incorrect',
+                response: 'Utilisateur inexistant',
             })
         }
-    } else {
-        // Utilisateur inexistant dans la base de données
-        res.status(401).render('signin', {
-            response: 'Utilisateur inexistant',
+    } catch (error) {
+        console.error("Erreur lors de la connexion :", error)
+        res.status(500).render('signin', {
+            response: "Une erreur interne s'est produite lors de la connexion.",
         })
     }
 }
