@@ -6,7 +6,7 @@ Ce guide vous accompagne pas-à-pas pour recréer ou déployer ce projet chez vo
 
 ## 🛠️ Étape 1 : Prérequis système
 Avant de démarrer, assurez-vous d'avoir installé sur votre ordinateur :
-- **Node.js** (Version 18 ou supérieure recommandée)
+- **Node.js** (Version 22 LTS ou supérieure obligatoire pour écarter les failles critiques de Node v18/v20)
 - Un terminal (PowerShell, Bash, Git Bash ou CMD)
 - Un éditeur de code (VS Code est idéal)
 - Un compte gratuit sur **MongoDB Atlas** (pour héberger votre base de données dans le cloud)

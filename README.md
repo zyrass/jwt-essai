@@ -1,7 +1,7 @@
 # 🍌 jwt-essai : Authentification JWT Robuste & Sécurisée
 
 <p align="left">
-  <img src="https://img.shields.io/badge/Node.js-v18+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Node.js-v22+_(LTS)-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express-v4.21-000000?style=flat-square&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/MongoDB-Mongoose%20v8-47A248?style=flat-square&logo=mongodb&logoColor=white" alt="MongoDB" />
   <img src="https://img.shields.io/badge/JWT-Stateless-d63aff?style=flat-square&logo=json-web-tokens&logoColor=white" alt="JWT" />
@@ -70,7 +70,7 @@ Pour vous permettre d'appréhender le projet sans aucun stress et de le reprodui
 ## 🚀 Démarrage Rapide
 
 ### 1. Prérequis
-Assurez-vous d'avoir installé **Node.js (v18+)** et d'avoir un accès à un cluster MongoDB Atlas.
+Assurez-vous d'avoir installé **Node.js (v22+ LTS)** (pour écarter les failles de sécurité critiques des versions antérieures v18/v20) et d'avoir un accès à un cluster MongoDB Atlas.
 
 ### 2. Cloner et Installer les Dépendances
 ```bash
