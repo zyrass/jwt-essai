@@ -1,5 +1,14 @@
 # 🍌 jwt-essai : Authentification JWT Robuste & Sécurisée
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Node.js-v18+-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Express-v4.21-000000?style=flat-square&logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/MongoDB-Mongoose%20v8-47A248?style=flat-square&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/JWT-Stateless-d63aff?style=flat-square&logo=json-web-tokens&logoColor=white" alt="JWT" />
+  <img src="https://img.shields.io/badge/Security-19.5%2F20%20(A%2B)-brightgreen?style=flat-square&logo=gitbook&logoColor=white" alt="Security Score" />
+  <img src="https://img.shields.io/badge/Release-v1.1.2-blue?style=flat-square&logo=github" alt="Latest Release" />
+</p>
+
 ![Bannière Cyber-Banane JWT](docs/assets/jwt_banana_showcase.png)
 
 > [!NOTE]
