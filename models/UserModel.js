@@ -25,12 +25,53 @@ const userSchema = new mongoose.Schema(
             required: true,    // Rend ce champ obligatoire
             trim: true,        // Supprime les espaces blancs
         },
+        // Nombre de tentatives infructueuses de connexion pour la protection brute-force
+        loginAttempts: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
+        // Heure jusqu'à laquelle le compte est verrouillé (blacklisté temporairement)
+        lockUntil: {
+            type: Date,
+        },
     },
     {
         // timestamps: true génère automatiquement les champs "createdAt" et "updatedAt" à chaque document
         timestamps: true,
     },
 )
+
+// --- Méthodes d'instance de Schéma pour le verrouillage de compte (Account Lockout) ---
+
+// Propriété virtuelle vérifiant si le compte est actuellement verrouillé
+userSchema.virtual('isLocked').get(function () {
+    return !!(this.lockUntil && this.lockUntil > Date.now())
+})
+
+// Incrémente le nombre de tentatives échouées de connexion et applique un blocage si le seuil est franchi
+userSchema.methods.incLoginAttempts = async function () {
+    // Si un ancien verrou temporel est déjà expiré, repartir à 1 tentative
+    if (this.lockUntil && this.lockUntil < Date.now()) {
+        this.loginAttempts = 1
+        this.lockUntil = undefined
+    } else {
+        this.loginAttempts += 1
+        // Seuil fixé à 5 tentatives échouées
+        if (this.loginAttempts >= 5) {
+            // Verrouillage de sécurité pendant 15 minutes (15 * 60 * 1000 millisecondes)
+            this.lockUntil = new Date(Date.now() + 15 * 60 * 1000)
+        }
+    }
+    return this.save()
+}
+
+// Réinitialise les essais et supprime le verrou (appelé suite à une authentification réussie)
+userSchema.methods.resetAttempts = async function () {
+    this.loginAttempts = 0
+    this.lockUntil = undefined
+    return this.save()
+}
 
 // Exporter le modèle Mongoose associé à la collection configurée dans le .env
 module.exports = mongoose.model(USER_COLLECTION_NAME, userSchema)

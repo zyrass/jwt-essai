@@ -32,8 +32,45 @@ const authenticated = (req, res, next) => {
         req.user = decoded
 
         // Définir un cookie utilitaire non crypté "userID" contenant l'identifiant MongoDB de l'utilisateur
-        // Ce cookie aide le navigateur à savoir quel profil afficher sans avoir à décoder le JWT côté client
-        res.cookie('userID', req.user._id)
+        // Ce cookie aide le navigateur à savoir quel profil afficher sans avoir à décoder le JWT côté client.
+        // Il est sécurisé via les attributs Secure et SameSite.
+        res.cookie('userID', req.user._id, {
+            httpOnly: false,                               // Ce cookie d'assistance peut être lu par le JS client pour orienter les redirections
+            secure: process.env.NODE_ENV === 'production', // Envoyé uniquement sur HTTPS en production
+            sameSite: 'strict',                            // Protection contre les fuites inter-sites
+            maxAge: 3600000                                // Coordonné sur 1 heure de validité (en millisecondes)
+        })
+
+        // --- Rotation de Jeton Actif (Sliding Session JWT Rotation) ---
+        // Les dates d'émission (iat) et d'expiration (exp) décodées du JWT sont en secondes
+        const nowInSeconds = Math.floor(Date.now() / 1000)
+        const totalDuration = decoded.exp - decoded.iat
+        const timeElapsed = nowInSeconds - decoded.iat
+
+        // Si plus de la moitié du temps s'est écoulé (ex: plus de 30 minutes passées sur 1 heure de validité)
+        if (timeElapsed > totalDuration / 2) {
+            // Générer un nouveau jeton d'accès prolongé d'une heure
+            const rotatedToken = jwt.sign(
+                {
+                    _id: decoded._id,
+                    email: decoded.email,
+                },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: '1h',
+                }
+            )
+
+            // Réémettre le cookie access_token blindé avec le nouveau JWT
+            res.cookie('access_token', rotatedToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 3600000 // Rallongé pour 1 heure (en millisecondes)
+            })
+
+            console.log(`[Rotation JWT] Le jeton de session pour l'utilisateur ${decoded.email} a été renouvelé avec succès (sliding window).`)
+        }
 
         // Autoriser le passage au middleware ou contrôleur suivant de la route
         next()

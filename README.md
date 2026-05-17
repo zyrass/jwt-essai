@@ -17,11 +17,14 @@ Ce projet met en pratique les règles fondamentales de la cybersécurité modern
 
 ## ⚡ Fonctionnalités Clés
 
-- **Inscription Pédagogique** : Enregistrement robuste avec validation des adresses email et salage/hachage asynchrone des mots de passe avec `bcrypt`.
-- **Authentification Stateless** : Connexion de l'utilisateur, vérification cryptographique et signature du token JWT.
-- **Stockage Ultra-Sécurisé** : Jeton stocké dans un cookie de session client pour neutraliser les attaques de type injection de scripts (XSS).
+- **Inscription & Validation** : Enregistrement robuste avec validation des adresses email et salage/hachage asynchrone des mots de passe avec `bcrypt`.
+- **Authentification Stateless (JWT)** : Connexion de l'utilisateur, vérification cryptographique et signature du token JWT.
+- **Stockage Ultra-Sécurisé (Cookie Hardening)** : Jeton stocké dans un cookie `access_token` blindé avec les attributs `httpOnly: true` (neutralise le vol XSS), `secure` (transmission HTTPS chiffrée uniquement) et `sameSite: 'strict'` (immunise contre CSRF).
+- **Protection contre le Brute-Force (Lockout)** : Blocage applicatif de sécurité pendant **15 minutes** dès que **5 tentatives consécutives** de connexion échouent pour un compte, stocké en base de données Mongoose de manière résiliente.
+- **Limiteur de Taux (IP Rate Limiting)** : Interception réseau limitant chaque IP à maximum **20 requêtes par 15 minutes** sur les routes sensibles d'authentification, avec redirection HTML intelligente (rendu de formulaire Pug avec alerte) ou JSON selon l'appelant.
+- **Session Glissante (Sliding JWT Rotation)** : Prolongation active et transparente de la session utilisateur d'une heure dès que plus de 50% de la validité du token (30 minutes) s'est écoulée en cours de navigation.
 - **Protection par Interception (Middleware)** : Filtrage automatisé des accès aux profils privés via un middleware d'analyse de validité du token.
-- **Déconnexion Sécurisée** : Suppression propre et complète des cookies sur le navigateur client.
+- **Déconnexion Propre** : Suppression complète des cookies sur le navigateur client pour fermer proprement la session.
 
 ---
 
