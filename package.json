@@ -28,5 +28,8 @@
     "bugs": {
         "url": "https://github.com/alain-guillon-it/jwt-essai/issues"
     },
-    "homepage": "https://github.com/alain-guillon-it/jwt-essai#readme"
+    "homepage": "https://github.com/alain-guillon-it/jwt-essai#readme",
+    "engines": {
+        "node": ">=22.0.0"
+    }
 }
