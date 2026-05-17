@@ -13,10 +13,10 @@ flowchart TD
     A["Client lance une requête HTTP"] --> B{"Vérifier la Route demandée"}
     
     %% Routes Publiques %%
-    B -->|Route Publique : /, /signin, /signup, /logout| C{"Est-ce un POST /signin ou /signup ?"}
+    B -->|Route Publique| C{"Est-ce un POST /signin ou /signup ?"}
     C -->|Oui| C1{"Interception par le Rate Limiter"}
-    C1 -->|IP Bloquée (requêtes > 20 en 15m)| C2["Retourner HTTP 429 : Trop de requêtes"]
-    C1 -->|IP Autorisée| D1["Appel du contrôleur UserController"]
+    C1 -->|IP Bloquee| C2["Retourner HTTP 429 : Trop de requêtes"]
+    C1 -->|IP Autorisee| D1["Appel du contrôleur UserController"]
     C -->|Non| D1
     
     D1 --> D["Rendu de la vue Pug ou Redirection"]
@@ -24,19 +24,19 @@ flowchart TD
     C2 --> E
     
     %% Routes Protégées %%
-    B -->|Route Protégée : /profile/:id| F["Interception par le Middleware : check.authenticated"]
+    B -->|Route Protegee| F["Interception par le Middleware : check.authenticated"]
     F --> G{"Le cookie 'access_token' existe ?"}
     
     G -->|Non| H["Retourner HTTP 401 : Token manquant"]
     H --> E
     
     G -->|Oui| I{"Décoder & Vérifier la signature du JWT avec la clé secrète"}
-    I -->|Signature Invalide ou Expire| J["Retourner HTTP 401 : Session expirée ou token invalide"]
+    I -->|Signature Invalide ou Expiree| J["Retourner HTTP 401 : Session expirée ou token invalide"]
     J --> E
     
     I -->|Signature Valide| K{"Vérifier la validité restante du JWT"}
-    K -->|"> 50% du temps écoulé (> 30 min)"| K1["Générer un nouveau JWT (Sliding Session) & Réémettre le cookie"]
-    K -->|"< 50% du temps écoulé"| K2["Continuer sans modification"]
+    K -->|Plus de 50 pourcent du temps ecoule| K1["Générer un nouveau JWT & Réémettre le cookie"]
+    K -->|Moins de 50 pourcent du temps ecoule| K2["Continuer sans modification"]
     
     K1 --> L["Injecter les infos dans req.user & rafraîchir cookie userID"]
     K2 --> L
